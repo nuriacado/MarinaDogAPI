@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Información de la API</title>
+    <link rel="stylesheet" href="{{ asset('css/estilo.css') }}">
+</head>
+<body>
+<h1>Información de la API</h1>
+
+    {% for metodo in metodosCRUD %}
+        <div>
+            <h2>{{ metodo.descripcion }}</h2>
+            <div>
+                <ul>
+                    <li><strong>Método:</strong> {{ metodo.metodo }}</li>
+                    <li><strong>Ruta:</strong> {{ metodo.ruta }}</li>
+                    <li><strong class="exito"> Respuesta exitosa:</strong>
+                        <ul>
+                            <li>Código: {{ metodo.exito }}</li>
+                        </ul>
+                    </li>
+
+                    {% if metodo.error|length > 0 %}
+                        <li><strong class="error">Respuesta de error:</strong>
+                            <ul>
+                                {% for error in metodo.error %}
+                                    <li>Código: {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    {% endfor %}
+
+</body>
+</html>
