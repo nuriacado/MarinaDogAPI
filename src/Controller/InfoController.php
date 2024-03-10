@@ -15,35 +15,35 @@ class InfoController extends AbstractController
         $metodosCRUD = [
             [
                 'metodo' => 'GET',
-                'ruta' => '/reservas',
+                'ruta' => '/reservas/{claveApi}',
                 'descripcion' => 'Obtener todas las reservas',
                 'exito' => '200 OK',
                 'error' => []
             ],
             [
                 'metodo' => 'GET',
-                'ruta' => '/reservas/{id}',
+                'ruta' => '/reservas/{claveApi}/{id}',
                 'descripcion' => 'Obtener una reserva por su ID',
                 'exito' => '200 OK',
                 'error' => ['404 NOT FOUND']
             ],
             [
                 'metodo' => 'POST',
-                'ruta' => '/reservas',
+                'ruta' => '/reservas/{claveApi}',
                 'descripcion' => 'Crear una nueva reserva',
                 'exito' => '201 Created',
                 'error' => ['400 BAD REQUEST', '404 NOT FOUND']
             ],
             [
                 'metodo' => 'PUT',
-                'ruta' => '/reservas/{id}',
+                'ruta' => '/reservas/{claveApi}/{id}',
                 'descripcion' => 'Modificar una reserva existente',
                 'exito' => '200 OK',
                 'error' => ['400 BAD REQUEST', '404 NOT FOUND']
             ],
             [
                 'metodo' => 'DELETE',
-                'ruta' => '/reservas/{id}',
+                'ruta' => '/reservas/{claveApi}/{id}',
                 'descripcion' => 'Eliminar una reserva por su ID',
                 'exito' => '200 OK',
                 'error' => ['404 NOT FOUND']

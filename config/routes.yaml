@@ -4,51 +4,38 @@ controllers:
         namespace: App\Controller
     type: attribute
 
-#not_found:
-#    path: /{any}
-#    controller: App\Controller\RedController::redirigirRuta
-#    requirements:
-#        any: .+
-
 info:
     path: /info
     controller: App\Controller\InfoController::mostrarInfo
     methods: GET
 
 reservas_list:
-    path: /reservas
+    path: /reservas/{claveApi}
     controller: App\Controller\ReservaController::getAll
     methods: GET
 
 reserva_show:
-    path: /reservas/{id}
+    path: /reservas/{claveApi}/{id}
     controller: App\Controller\ReservaController::getReserva
     methods: GET
     requirements:
         id: \d+
 
 reserva_create:
-    path: /reservas
+    path: /reservas/{claveApi}
     controller: App\Controller\ReservaController::crearReserva
     methods: POST
 
 reserva_update:
-    path: /reservas/{id}
+    path: /reservas/{claveApi}/{id}
     controller: App\Controller\ReservaController::modificarReserva
     methods: PUT
     requirements:
         id: \d+
 
 reserva_delete:
-    path: /reservas/{id}
+    path: /reservas/{claveApi}/{id}
     controller: App\Controller\ReservaController::borrarReserva
     methods: DELETE
     requirements:
         id: \d+
-
-root:
-    path: /{url}
-    defaults:
-        _controller: FrameworkBundle:Redirect:urlRedirect
-        path: /app
-        permanent: true

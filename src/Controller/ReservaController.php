@@ -3,6 +3,7 @@
 // src/Controller/ReservaController.php
 namespace App\Controller;
 
+use App\Entity\Usuario;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,97 +18,108 @@ use App\Entity\Habitacion;
  */
 class ReservaController extends AbstractController
 {
-    /**
-     * @Route("/", methods={"GET"}, name="reservas_list")
-     */
-    public function getAll(EntityManagerInterface $entityManager): Response
+    private function comprobarClave(EntityManagerInterface $entityManager, $claveApi)
     {
-        $emReservas = $entityManager->getRepository(DetallesReserva::class)->findAll();
-
-        $reservas = [];
-        if (count($emReservas) > 0) {
-            foreach ($emReservas as $reserva) {
-                $reservas[] = [
-                    'id' => $reserva->getId(),
-                    'entrada' => $reserva->getFechaEntrada()->format('d/m/Y'),
-                    'salida' => $reserva->getFechaSalida()->format('d/m/Y'),
-                    'habitacion_id'=> $reserva->getHabitacion(),
-                    'nombre'=> $reserva->getNombre(),
-                    'apellidos'=> $reserva->getApellidos(),
-                    'correo'=> $reserva->getCorreo(),
-                    'telefono'=> $reserva->getTelefono(),
-                    'direccion'=> $reserva->getDireccion()
-                ];
-            }
-        }
-
-        return new JsonResponse($reservas, Response::HTTP_OK);
+        return $entityManager->getRepository(Usuario::class)->findOneBy(['claveApi' => $claveApi]);
     }
 
     /**
-     * @Route("/{id}", methods={"GET"}, name="reserva_show", requirements={"id"="\d+"})
+     * @Route("/{claveApi}", methods={"GET"}, name="reservas_list")
      */
-    public function getReserva($id, EntityManagerInterface $entityManager): Response
+    public function getAll($claveApi, EntityManagerInterface $entityManager): Response
     {
-        $emReserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
+        if ($this->comprobarClave($entityManager, $claveApi)) {
+            $emReservas = $entityManager->getRepository(DetallesReserva::class)->findAll();
 
-        if (!$emReserva) {
-            return new JsonResponse('', Response::HTTP_NOT_FOUND);
+            $reservas = [];
+            if (count($emReservas) > 0) {
+                foreach ($emReservas as $reserva) {
+                    $reservas[] = $this->modeloReserva($reserva);
+                }
+            }
+
+            return new JsonResponse($reservas, Response::HTTP_OK);
         }
+        return new JsonResponse('', 401);
+    }
 
-        $reserva = [
-            'id' => $emReserva->getId(),
-            'entrada' => $emReserva->getFechaEntrada()->format('d/m/Y'),
-            'salida' => $emReserva->getFechaSalida()->format('d/m/Y'),
-            'habitacion_id'=> $emReserva->getHabitacion(),
-            'nombre'=> $emReserva->getNombre(),
-            'apellidos'=> $emReserva->getApellidos(),
-            'correo'=> $emReserva->getCorreo(),
-            'telefono'=> $emReserva->getTelefono(),
-            'direccion'=> $emReserva->getDireccion()
+    private function modeloReserva($reserva)
+    {
+        return [
+            'id' => $reserva->getId(),
+            'entrada' => $reserva->getFechaEntrada()->format('d/m/Y'),
+            'salida' => $reserva->getFechaSalida()->format('d/m/Y'),
+            'habitacion_id' => $reserva->getHabitacion(),
+            'nombre' => $reserva->getNombre(),
+            'apellidos' => $reserva->getApellidos(),
+            'correo' => $reserva->getCorreo(),
+            'telefono' => $reserva->getTelefono(),
+            'direccion' => $reserva->getDireccion()
         ];
-
-        return new JsonResponse($reserva, Response::HTTP_OK);
     }
 
     /**
-     * @Route("/", methods={"POST"}, name="reserva_create")
+     * @Route("/{claveApi}/{id}", methods={"GET"}, name="reserva_show", requirements={"id"="\d+"})
      */
-    public function crearReserva(Request $request, EntityManagerInterface $entityManager): Response
+    public function getReserva($claveApi, $id, EntityManagerInterface $entityManager): Response
     {
-        $data = json_decode($request->getContent(), true);
+        if ($this->comprobarClave($entityManager, $claveApi)) {
+            $emReserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
 
-        $datos = $this->validarDatos($data['nombre'], $data['correo'], $data['apellidos'], $data['telefono'], $data['direccion']);
-        $reserva = $this->comprobarHabitacion($data['habitacion_id'], $data['fecha_entrada'], $data['fecha_salida'], $entityManager);
-
-        if ($reserva && $datos) {
-            $habitacionId = $data['habitacion_id'];
-            $habitacion = $entityManager->getRepository(Habitacion::class)->find($habitacionId);
-
-            if (!$habitacion) {
-                return new Response('', Response::HTTP_NOT_FOUND);
+            if (!$emReserva) {
+                return new JsonResponse('', Response::HTTP_NOT_FOUND);
             }
 
-            $reserva = new DetallesReserva();
-            $reserva->setFechaEntrada(new \DateTime($data['fecha_entrada']));
-            $reserva->setFechaSalida(new \DateTime($data['fecha_salida']));
-            $reserva->setHabitacion($habitacion);
-            $reserva->setNombre($data['nombre']);
-            $reserva->setApellidos($data['apellidos']);
-            $reserva->setCorreo($data['correo']);
-            $reserva->setTelefono($data['telefono']);
-            $reserva->setDireccion($data['direccion']);
+            $reserva = $this->modeloReserva($emReserva);
 
-            $entityManager->persist($reserva);
-            $entityManager->flush();
-
-            return new Response('', Response::HTTP_CREATED);
+            return new JsonResponse($reserva, Response::HTTP_OK);
         }
 
-        return new Response('', Response::HTTP_BAD_REQUEST);
+        return new JsonResponse('', 401);
     }
 
-    public function comprobarHabitacion($numHabitacion, $fechaEntrada, $fechaSalida, EntityManagerInterface $entityManager): bool
+    /**
+     * @Route("/{claveApi}", methods={"POST"}, name="reserva_create")
+     */
+    public function crearReserva($claveApi, Request $request, EntityManagerInterface $entityManager): Response
+    {
+        if ($this->comprobarClave($entityManager, $claveApi)) {
+            $data = json_decode($request->getContent(), true);
+
+            $datos = $this->validarDatos($data['nombre'], $data['correo'], $data['apellidos'], $data['telefono'], $data['direccion']);
+            $reserva = $this->comprobarHabitacion($data['habitacion_id'], $data['fecha_entrada'], $data['fecha_salida'], $entityManager);
+
+            if ($reserva && $datos) {
+                $habitacionId = $data['habitacion_id'];
+                $habitacion = $entityManager->getRepository(Habitacion::class)->find($habitacionId);
+
+                if (!$habitacion) {
+                    return new Response('', Response::HTTP_NOT_FOUND);
+                }
+
+                $reserva = new DetallesReserva();
+                $reserva->setFechaEntrada(new \DateTime($data['fecha_entrada']));
+                $reserva->setFechaSalida(new \DateTime($data['fecha_salida']));
+                $reserva->setHabitacion($habitacion);
+                $reserva->setNombre($data['nombre']);
+                $reserva->setApellidos($data['apellidos']);
+                $reserva->setCorreo($data['correo']);
+                $reserva->setTelefono($data['telefono']);
+                $reserva->setDireccion($data['direccion']);
+
+                $entityManager->persist($reserva);
+                $entityManager->flush();
+
+                return new Response('', Response::HTTP_CREATED);
+            }
+
+            return new Response('', Response::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse('', 401);
+    }
+
+    private function comprobarHabitacion($numHabitacion, $fechaEntrada, $fechaSalida, EntityManagerInterface $entityManager): bool
     {
         if ($fechaEntrada < $fechaSalida) {
             $query = $entityManager->createQuery(
@@ -132,7 +144,7 @@ class ReservaController extends AbstractController
     }
 
 
-    public function validarDatos($nombre, $correo, $apellidos, $telefono, $direccion): bool
+    private function validarDatos($nombre, $correo, $apellidos, $telefono, $direccion): bool
     {
         if (strlen($nombre) == 0 || strlen($apellidos) == 0 || strlen($correo) == 0 || strlen($telefono) == 0 || strlen($direccion) == 0) {
             return false;
@@ -146,46 +158,54 @@ class ReservaController extends AbstractController
     }
 
     /**
-     * @Route("/{id}", methods={"PUT"}, name="reserva_update", requirements={"id"="\d+"})
+     * @Route("/{claveApi}/{id}", methods={"PUT"}, name="reserva_update", requirements={"id"="\d+"})
      */
-    public function modificarReserva($id, Request $request, EntityManagerInterface $entityManager): Response
+    public function modificarReserva($claveApi, $id, Request $request, EntityManagerInterface $entityManager): Response
     {
-        $data = json_decode($request->getContent(), true);
-        $reserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
+        if ($this->comprobarClave($entityManager, $claveApi)) {
+            $data = json_decode($request->getContent(), true);
+            $reserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
 
-        if (!$reserva) {
-            return new JsonResponse('', Response::HTTP_NOT_FOUND);
+            if (!$reserva) {
+                return new JsonResponse('', Response::HTTP_NOT_FOUND);
+            }
+
+            if (!$this->validarDatos($data['nombre'], $data['correo'], $data['apellidos'], $data['telefono'], $data['direccion'])) {
+                return new JsonResponse('', Response::HTTP_BAD_REQUEST);
+            }
+
+            $reserva->setNombre($data['nombre']);
+            $reserva->setApellidos($data['apellidos']);
+            $reserva->setCorreo($data['correo']);
+            $reserva->setTelefono($data['telefono']);
+            $reserva->setDireccion($data['direccion']);
+
+            $entityManager->flush();
+
+            return new Response('', Response::HTTP_OK);
         }
 
-        if (!$this->validarDatos($data['nombre'], $data['correo'], $data['apellidos'], $data['telefono'], $data['direccion'])) {
-            return new JsonResponse('', Response::HTTP_BAD_REQUEST);
-        }
-
-        $reserva->setNombre($data['nombre']);
-        $reserva->setApellidos($data['apellidos']);
-        $reserva->setCorreo($data['correo']);
-        $reserva->setTelefono($data['telefono']);
-        $reserva->setDireccion($data['direccion']);
-
-        $entityManager->flush();
-
-        return new Response('', Response::HTTP_OK);
+        return new JsonResponse('', 401);
     }
 
     /**
-     * @Route("/{id}", methods={"DELETE"}, name="reserva_delete", requirements={"id"="\d+"})
+     * @Route("/{claveApi}/{id}", methods={"DELETE"}, name="reserva_delete", requirements={"id"="\d+"})
      */
-    public function borrarReserva($id, EntityManagerInterface $entityManager): Response
+    public function borrarReserva($claveApi, $id, EntityManagerInterface $entityManager): Response
     {
-        $reserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
+        if ($this->comprobarClave($entityManager, $claveApi)) {
+            $reserva = $entityManager->getRepository(DetallesReserva::class)->find($id);
 
-        if (!$reserva) {
-            return new JsonResponse([], Response::HTTP_NOT_FOUND);
+            if (!$reserva) {
+                return new JsonResponse([], Response::HTTP_NOT_FOUND);
+            }
+
+            $entityManager->remove($reserva);
+            $entityManager->flush();
+
+            return new Response('', Response::HTTP_OK);
         }
 
-        $entityManager->remove($reserva);
-        $entityManager->flush();
-
-        return new Response('', Response::HTTP_OK);
+        return new JsonResponse('', 401);
     }
 }
